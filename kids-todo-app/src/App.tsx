@@ -4,13 +4,19 @@ import { FamilySetup } from './components/FamilySetup';
 import { ParentPanel } from './components/ParentPanel';
 import { ChildPanel } from './components/ChildPanel';
 import { RewardManagement } from './components/RewardManagement';
+import { ManageChores } from './components/ManageChores';
 import { useFamilyStorage } from './hooks/useLocalStorage';
-import { createFamily, resetRecurringTasks } from './utils/familyLogic';
+import { createFamily, resetRecurringTasks, resetDailyTasks } from './utils/familyLogic';
 import { AppState, Family, Parent, Child, ViewMode } from './types';
 
 function App() {
   const { appState, updateState, resetApp } = useFamilyStorage();
   const [currentView, setCurrentView] = useState<ViewMode>('setup');
+
+  // Debug per tracciare i cambiamenti di vista
+  React.useEffect(() => {
+    console.log('🎯 currentView cambiato:', currentView);
+  }, [currentView]);
 
   // Reset automatico missioni ricorrenti
   React.useEffect(() => {
@@ -21,6 +27,16 @@ function App() {
       }
     }
   }, [appState.setupComplete, appState.family?.id]); // Solo quando cambia la famiglia
+
+  // Reset automatico giornaliero delle missioni completate
+  React.useEffect(() => {
+    if (appState.setupComplete && appState.family) {
+      const dailyResetState = resetDailyTasks(appState);
+      if (dailyResetState !== appState) {
+        updateState(dailyResetState);
+      }
+    }
+  }, [appState.setupComplete]); // Controlla ogni volta che l'app viene caricata
 
   // Gestione eventi custom per confetti
   React.useEffect(() => {
@@ -129,6 +145,7 @@ function App() {
         appState={appState}
         onUpdateState={updateState}
         onViewChange={setCurrentView}
+        setCurrentView={setCurrentView}
         onModeToggle={handleModeToggle}
       />
     );
@@ -174,6 +191,27 @@ function App() {
         </div>
       );
     }
+
+  // Manage Chores Mode
+  const shouldShowManageChores = currentView === 'manage-chores';
+  console.log('🔍 CONTROLLO CONDIZIONE:', shouldShowManageChores);
+  console.log('📋 currentView value:', currentView);
+  console.log('📋 manage-chores string:', 'manage-chores');
+  
+  if (shouldShowManageChores) {
+    console.log('🎯 RENDERIZZO MANAGE CHORES - App.tsx');
+    console.log('📋 currentView:', currentView);
+    return (
+      <ManageChores
+        appState={appState}
+        onUpdateState={updateState}
+        onBack={() => {
+          console.log('🔙 TORNO INDIETRO DA MANAGE CHORES');
+          setCurrentView('parent-dashboard');
+        }}
+      />
+    );
+  }
 
     return (
       <ChildPanel

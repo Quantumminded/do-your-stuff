@@ -16,13 +16,15 @@ export function calculateChildLevel(totalXp: number): number {
 
 export function addTask(
   appState: AppState,
-  taskData: Omit<Task, 'id' | 'status' | 'completedAt' | 'approvedAt' | 'lastResetAt'>
+  taskData: Omit<Task, 'id' | 'status' | 'completedAt' | 'approvedAt' | 'lastResetAt' | 'isCompleted' | 'lastCompletedDate'>
 ): AppState {
   const newTask: Task = {
     ...taskData,
     id: Date.now().toString(),
     status: 'pending',
     lastResetAt: taskData.recurrence === 'once' ? undefined : new Date(),
+    isConfigured: true, // Di default configurata quando creata
+    isCompleted: false, // Di default non completata
   };
 
   return {
@@ -150,7 +152,8 @@ export function getTasksForChild(appState: AppState, childId: string): Task[] {
   today.setHours(0, 0, 0, 0);
   
   return appState.tasks.filter(task => {
-    if (task.assignedTo !== childId) return false;
+    // Filtra solo le task configurate e assegnate al bambino
+    if (task.assignedTo !== childId || !task.isConfigured) return false;
     
     // For daily tasks, show today's tasks
     if (task.recurrence === 'daily') {
@@ -211,22 +214,60 @@ export function shouldResetTask(task: Task): boolean {
 }
 
 export function resetRecurringTasks(appState: AppState): AppState {
-  const tasksToReset = appState.tasks.filter(task => 
-    task.status === 'approved' && shouldResetTask(task)
-  );
-  
-  if (tasksToReset.length === 0) return appState;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
   
   const updatedTasks = appState.tasks.map(task => {
-    if (tasksToReset.includes(task)) {
-      return {
-        ...task,
-        status: 'pending' as const,
-        completedAt: undefined,
-        approvedAt: undefined,
-        lastResetAt: new Date(),
-      };
+    if (task.recurrence === 'daily' && task.lastResetAt) {
+      const lastReset = new Date(task.lastResetAt);
+      lastReset.setHours(0, 0, 0, 0);
+      
+      // Se l'ultimo reset è stato prima di oggi, resetta la missione
+      if (lastReset < today) {
+        return {
+          ...task,
+          lastResetAt: today,
+          status: 'pending' as const,
+          completedAt: undefined,
+          approvedAt: undefined,
+          isCompleted: false, // Resetta il completamento per il nuovo giorno
+          lastCompletedDate: undefined,
+        };
+      }
     }
+    
+    return task;
+  });
+  
+  return {
+    ...appState,
+    tasks: updatedTasks,
+  };
+}
+
+export function resetDailyTasks(appState: AppState): AppState {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const updatedTasks = appState.tasks.map(task => {
+    // Controlla se la missione è stata completata in un giorno precedente
+    if (task.lastCompletedDate) {
+      const lastCompleted = new Date(task.lastCompletedDate);
+      lastCompleted.setHours(0, 0, 0, 0);
+      
+      // Se l'ultimo completamento è stato prima di oggi, resetta isCompleted
+      if (lastCompleted < today) {
+        return {
+          ...task,
+          isCompleted: false,
+          lastCompletedDate: undefined,
+          status: 'pending' as const,
+          completedAt: undefined,
+          approvedAt: undefined,
+        };
+      }
+    }
+    
     return task;
   });
   

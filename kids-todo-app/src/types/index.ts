@@ -24,6 +24,11 @@ export interface Task {
   lastResetAt?: Date;
   icon: string;
   createdBy: string; // parent ID
+  category?: string; // Categoria per raggruppamento
+  isConfigured: boolean; // Controllato dal genitore (switch)
+  isCompleted: boolean; // Controllato dal bambino (completamento)
+  timeSlot?: string; // Fascia oraria (es. "Mattina", "Pomeriggio")
+  lastCompletedDate?: Date; // Data dell'ultimo completamento
 }
 
 export interface Reward {
@@ -63,4 +68,4 @@ export interface AppState {
   parentPin: string;
 }
 
-export type ViewMode = 'setup' | 'parent-dashboard' | 'child-dashboard' | 'task-management' | 'reward-management' | 'approval-queue';
+export type ViewMode = 'setup' | 'parent-dashboard' | 'child-dashboard' | 'task-management' | 'reward-management' | 'approval-queue' | 'manage-chores';

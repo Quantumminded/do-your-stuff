@@ -30,9 +30,23 @@ export function ChildPanel({ appState, child, onUpdateState, onModeToggle }: Chi
   
   const handleTaskComplete = (taskId: string) => {
     const task = todayTasks.find(t => t.id === taskId);
-    if (!task || task.status !== 'pending') return;
+    if (!task || task.isCompleted) return;
 
-    const newState = updateTaskStatus(appState, taskId, 'completed');
+    // Aggiorna isCompleted e lastCompletedDate
+    const newState = {
+      ...appState,
+      tasks: appState.tasks.map(t => 
+        t.id === taskId 
+          ? { 
+              ...t, 
+              isCompleted: true,
+              lastCompletedDate: new Date(),
+              status: 'completed' as const,
+              completedAt: new Date()
+            }
+          : t
+      )
+    };
     onUpdateState(newState);
     // Non più confetti qui - solo quando il genitore approva
   };
@@ -176,15 +190,17 @@ export function ChildPanel({ appState, child, onUpdateState, onModeToggle }: Chi
                     {todayTasks.map(task => (
                       <motion.div
                         key={task.id}
-                        whileHover={{ scale: task.status === 'pending' ? 1.02 : 1 }}
-                        whileTap={{ scale: task.status === 'pending' ? 0.98 : 1 }}
-                        onClick={() => task.status === 'pending' && handleTaskComplete(task.id)}
+                        whileHover={{ scale: !task.isCompleted ? 1.02 : 1 }}
+                        whileTap={{ scale: !task.isCompleted ? 0.98 : 1 }}
+                        onClick={() => !task.isCompleted && handleTaskComplete(task.id)}
                         className={`bg-gradient-to-r rounded-2xl p-4 transition-all ${
-                          task.status === 'pending'
+                          !task.isCompleted
                             ? 'from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 cursor-pointer'
-                            : task.status === 'completed'
+                            : task.isCompleted && task.status === 'completed'
                             ? 'from-yellow-50 to-orange-50 cursor-not-allowed opacity-75'
-                            : 'from-green-50 to-emerald-50'
+                            : task.isCompleted && task.status === 'approved'
+                            ? 'from-green-50 to-emerald-50'
+                            : 'from-blue-50 to-purple-50'
                         }`}
                       >
                         <div className="flex items-start justify-between mb-3">
@@ -200,13 +216,23 @@ export function ChildPanel({ appState, child, onUpdateState, onModeToggle }: Chi
                             </motion.div>
                             <div className="flex-1">
                               <h3 className={`font-bold text-lg ${
-                                task.status === 'approved' 
+                                task.isCompleted && task.status === 'approved' 
                                   ? 'text-gray-500 line-through' 
+                                  : task.isCompleted && task.status === 'completed'
+                                  ? 'text-gray-600'
                                   : 'text-gray-800'
                               }`}>
                                 {task.title}
                               </h3>
-                              <p className="text-sm text-gray-600">{task.description}</p>
+                              <p className={`text-sm ${
+                                task.isCompleted && task.status === 'approved' 
+                                  ? 'text-gray-400 line-through' 
+                                  : task.isCompleted && task.status === 'completed'
+                                  ? 'text-gray-500'
+                                  : 'text-gray-600'
+                              }`}>
+                                {task.description}
+                              </p>
                             </div>
                           </div>
                           
@@ -238,20 +264,28 @@ export function ChildPanel({ appState, child, onUpdateState, onModeToggle }: Chi
                           </div>
                           
                           <div className="text-right">
-                            {task.status === 'pending' && (
-                              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold">
-                                Clicca per completare!
-                              </span>
+                            {!task.isCompleted && (
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => handleTaskComplete(task.id)}
+                                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-2 px-4 rounded-xl text-sm shadow-lg"
+                              >
+                                <CheckCircle2 className="w-4 h-4 mr-1" />
+                                Fatto!
+                              </motion.button>
                             )}
-                            {task.status === 'completed' && (
-                              <span className="text-xs bg-yellow-500 text-white px-2 py-1 rounded-full font-semibold animate-pulse">
-                                ⏳ In attesa di verifica
-                              </span>
+                            {task.isCompleted && task.status === 'completed' && (
+                              <div className="bg-yellow-100 text-yellow-700 font-semibold py-2 px-4 rounded-xl text-sm border-2 border-yellow-300">
+                                <Clock className="w-4 h-4 mr-1 inline" />
+                                In attesa di verifica
+                              </div>
                             )}
-                            {task.status === 'approved' && (
-                              <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
-                                Completato! ✨
-                              </span>
+                            {task.isCompleted && task.status === 'approved' && (
+                              <div className="bg-green-100 text-green-700 font-semibold py-2 px-4 rounded-xl text-sm border-2 border-green-300">
+                                <CheckCircle2 className="w-4 h-4 mr-1 inline" />
+                                Approvata!
+                              </div>
                             )}
                           </div>
                         </div>

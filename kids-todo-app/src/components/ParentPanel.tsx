@@ -8,17 +8,20 @@ import {
   Users, 
   Settings, 
   Gift,
-  Shield
+  Shield,
+  ChevronDown
 } from 'lucide-react';
 import { AppState, Child, ViewMode } from '../types';
 import { addTask, updateTaskStatus, getTasksNeedingApproval } from '../utils/familyLogic';
 import { PinPad } from './PinPad';
+import { ManageChores } from './ManageChores';
 
 interface ParentPanelProps {
   appState: AppState;
   onUpdateState: (newState: AppState) => void;
   onViewChange: (view: ViewMode) => void;
   onModeToggle: () => void;
+  setCurrentView: (view: ViewMode) => void;
 }
 
 const TASK_TEMPLATES = [
@@ -43,7 +46,7 @@ const RECURRENCE_CONFIG = {
   once: { label: 'Una volta', icon: '🎯' },
 };
 
-export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggle }: ParentPanelProps) {
+export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggle, setCurrentView }: ParentPanelProps) {
   const [showAddTask, setShowAddTask] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<typeof TASK_TEMPLATES[0] | null>(null);
   const [customTask, setCustomTask] = useState({ title: '', description: '', icon: '📋' });
@@ -51,6 +54,7 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
   const [recurrence, setRecurrence] = useState<'daily' | 'weekly' | 'monthly' | 'once'>('daily');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [showPinPad, setShowPinPad] = useState(false);
+  const [showManageChores, setShowManageChores] = useState(false);
 
   const pendingTasks = getTasksNeedingApproval(appState);
 
@@ -106,6 +110,7 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
       icon: taskData.icon,
       createdBy: appState.family!.parents[0].id,
       createdAt: new Date(),
+      isConfigured: true, // Di default configurata quando creata
     };
 
     const newState = addTask(appState, newTask);
@@ -139,6 +144,11 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
     } else if (newPin) {
       alert('PIN non valido! Deve essere di 4 cifre.');
     }
+  };
+
+  const handleManageChores = () => {
+    console.log('🔥 CLICK GESTIONE MISSIONI - ParentPanel');
+    setShowManageChores(true);
   };
 
   return (
@@ -418,6 +428,16 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
             <Gift className="w-6 h-6" />
             Gestione Premi
           </motion.button>
+          
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={handleManageChores}
+            className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-bold py-4 rounded-3xl shadow-lg flex items-center justify-center gap-2"
+          >
+            <Settings className="w-6 h-6" />
+            Gestione Missioni
+          </motion.button>
         </motion.div>
 
         {/* Add Task Modal */}
@@ -588,6 +608,48 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
           correctPin={appState.parentPin}
         />
       </div>
+
+      {/* Manage Chores Modal */}
+      <AnimatePresence>
+        {showManageChores && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowManageChores(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl p-6 max-w-6xl w-full max-h-[90vh] overflow-y-auto"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                  <Settings className="w-6 h-6 text-purple-600" />
+                  Gestione Missioni
+                </h2>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowManageChores(false)}
+                  className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
+                >
+                  <ChevronDown className="w-5 h-5 rotate-90" />
+                </motion.button>
+              </div>
+              
+              <ManageChores
+                appState={appState}
+                onUpdateState={onUpdateState}
+                onBack={() => setShowManageChores(false)}
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
