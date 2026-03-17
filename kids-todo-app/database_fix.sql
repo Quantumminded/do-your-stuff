@@ -9,8 +9,11 @@ ALTER TABLE families DISABLE ROW LEVEL SECURITY;
 ALTER TABLE parents DISABLE ROW LEVEL SECURITY;
 ALTER TABLE rewards DISABLE ROW LEVEL SECURITY;
 
--- 2. CANCELLA E RICREA TABELLA TASKS CON STRUTTURA CORRETTA
-DROP TABLE IF EXISTS tasks CASCADE;
+-- 2. AGGIUNGI COLONNA FAMILY_ID SE MANCANTE
+ALTER TABLE tasks ADD COLUMN IF NOT EXISTS family_id UUID REFERENCES families(id) ON DELETE CASCADE;
+
+-- Se vuoi ricreare completamente la tabella, commenta la riga sopra e decommenta queste:
+-- DROP TABLE IF EXISTS tasks CASCADE;
 
 CREATE TABLE tasks (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -28,13 +31,14 @@ CREATE TABLE tasks (
   completed_at TIMESTAMP WITH TIME ZONE,
   approved_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_by UUID REFERENCES parents(id) ON DELETE SET NULL
+  created_by UUID REFERENCES parents(id) ON DELETE SET NULL,
+  family_id UUID REFERENCES families(id) ON DELETE CASCADE
 );
 
 -- 3. INDICI PER PERFORMANCE
-CREATE INDEX idx_tasks_assigned_to ON tasks(assigned_to);
-CREATE INDEX idx_tasks_is_configured ON tasks(is_configured);
-CREATE INDEX idx_tasks_family_id ON tasks(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_tasks_assigned_to ON tasks(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_tasks_is_configured ON tasks(is_configured);
+CREATE INDEX IF NOT EXISTS idx_tasks_family_id ON tasks(family_id);
 
 -- 4. RIABILITA RLS CON POLITICHE CORRETTE
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;

@@ -96,35 +96,144 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
     };
   }, []);
 
-  const handleAddTask = () => {
+  // Ricarica le missioni dal database quando lo stato cambia
+  React.useEffect(() => {
+    if (appState && appState.tasks.length > 0) {
+      console.log('📊 Missioni correnti nello stato:', appState.tasks.length);
+    }
+  }, [appState?.tasks]);
+
+  const handleAddTask = async () => {
     const taskData = selectedTemplate || customTask;
     if (!taskData.title.trim() || !selectedChild) return;
 
     const config = DIFFICULTY_CONFIG[difficulty];
-    const newTask = {
-      title: taskData.title.trim(),
-      description: taskData.description.trim(),
-      recurrence,
-      difficulty,
-      coins: config.coins,
-      xp: config.xp,
-      assignedTo: selectedChild,
-      icon: taskData.icon,
-      createdBy: appState.family!.parents[0].id,
-      createdAt: new Date(),
-      isConfigured: true, // Di default configurata quando creata
-    };
-
-    const newState = addTask(appState, newTask);
-    onUpdateState(newState);
     
-    // Reset form
-    setShowAddTask(false);
-    setSelectedTemplate(null);
-    setCustomTask({ title: '', description: '', icon: '📋' });
-    setSelectedChild('');
-    setRecurrence('daily');
-    setDifficulty('easy');
+    try {
+      console.log('🔧 Creazione missione su Supabase...');
+      
+      const taskDataToInsert = {
+        title: taskData.title.trim(),
+        description: taskData.description.trim(),
+        recurrence,
+        difficulty,
+        coins: config.coins,
+        xp: config.xp,
+        assigned_to: selectedChild,
+        icon: taskData.icon,
+        created_by: appState.family!.parents[0].id,
+        family_id: appState.family!.id,
+        status: 'pending',
+        is_configured: true,
+        is_completed: false
+      };
+      
+      console.log('📋 Dati missione da inserire:', taskDataToInsert);
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert(taskDataToInsert)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Errore creazione missione:', error);
+        console.error('❌ Dettagli errore:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        alert(`❌ Errore database: ${error.message}\nDettagli: ${JSON.stringify(error.details || 'Nessun dettaglio')}`);
+        return;
+      }
+
+      console.log('✅ Missione creata su Supabase:', data);
+
+      // Aggiungi allo stato locale con UUID da Supabase
+      const newTask = {
+        id: data.id, // UUID da Supabase
+        title: data.title,
+        description: data.description,
+        recurrence: data.recurrence,
+        difficulty: data.difficulty,
+        coins: data.coins,
+        xp: data.xp,
+        assignedTo: data.assigned_to,
+        icon: data.icon,
+        createdBy: data.created_by,
+        createdAt: new Date(data.created_at),
+        status: data.status,
+        isConfigured: data.is_configured,
+        isCompleted: data.is_completed
+      };
+
+      const newState = addTask(appState, newTask);
+      console.log('🔄 Stato prima dell\'update:', appState.tasks.length);
+      console.log('🔄 Nuovo stato dopo aggiunta:', newState.tasks.length);
+      onUpdateState(newState);
+      console.log('✅ Stato aggiornato con nuova missione!');
+      
+      // Ricarica i dati freschi dal database
+      setTimeout(async () => {
+        console.log('🔄 Ricarico dati freschi da Supabase...');
+        try {
+          const { data: children } = await supabase
+            .from('children')
+            .select('*')
+            .eq('family_id', appState.family!.id);
+
+          const { data: tasks } = await supabase
+            .from('tasks')
+            .select('*')
+            .in('assigned_to', children?.map(c => c.id) || []);
+
+          console.log('📊 Missioni ricaricate:', tasks?.length);
+          
+          if (tasks && children) {
+            const refreshedState = {
+              ...appState,
+              tasks: tasks.map((t: any) => ({
+                id: t.id,
+                title: t.title,
+                description: t.description,
+                recurrence: t.recurrence,
+                difficulty: t.difficulty,
+                coins: t.coins,
+                xp: t.xp,
+                assignedTo: t.assigned_to,
+                icon: t.icon,
+                status: t.status,
+                isConfigured: t.is_configured,
+                isCompleted: t.is_completed,
+                completedAt: t.completed_at ? new Date(t.completed_at) : undefined,
+                approvedAt: t.approved_at ? new Date(t.approved_at) : undefined,
+                createdAt: new Date(t.created_at),
+                createdBy: t.created_by
+              }))
+            };
+            onUpdateState(refreshedState);
+            console.log('✅ Stato refreshato con dati freschi!');
+          }
+        } catch (err) {
+          console.error('❌ Errore refresh dati:', err);
+        }
+      }, 1000);
+      
+      alert(`🎉 Missione "${taskData.title}" creata con successo!`);
+      
+      // Reset form
+      setShowAddTask(false);
+      setSelectedTemplate(null);
+      setCustomTask({ title: '', description: '', icon: '📋' });
+      setSelectedChild('');
+      setRecurrence('daily');
+      setDifficulty('easy');
+      
+    } catch (err) {
+      console.error('❌ Errore creazione missione:', err);
+      alert('❌ Errore di connessione. Riprova.');
+    }
   };
 
   const handleApproveTask = (taskId: string) => {
@@ -321,19 +430,61 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
                         <motion.button
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
-                          onClick={() => {
+                          onClick={async () => {
                             setShowSettingsMenu(false);
                             if (window.confirm('⚠️ Sei sicuro di voler resettare TUTTO?\n\nTutti i dati verranno cancellati:\n• Famiglia\n• Bambini\n• Missioni\n• Premi\n• Monete e XP\n\nQuesta azione non è reversibile!')) {
-                              localStorage.removeItem('eroi-di-casa-state');
-                              window.location.reload();
+                              try {
+                                console.log('🔄 Reset completo database...');
+                                 
+                                // Cancella tutte le missioni
+                                const { error: tasksError } = await supabase
+                                  .from('tasks')
+                                  .delete()
+                                  .eq('family_id', appState.family!.id);
+
+                                if (tasksError) {
+                                  console.error('❌ Errore cancellazione missioni:', tasksError);
+                                }
+
+                                // Cancella tutti i bambini
+                                const { error: childrenError } = await supabase
+                                  .from('children')
+                                  .delete()
+                                  .eq('family_id', appState.family!.id);
+
+                                if (childrenError) {
+                                  console.error('❌ Errore cancellazione bambini:', childrenError);
+                                }
+
+                                // Cancella tutti i premi
+                                const { error: rewardsError } = await supabase
+                                  .from('rewards')
+                                  .delete()
+                                  .eq('family_id', appState.family!.id);
+
+                                if (rewardsError) {
+                                  console.error('❌ Errore cancellazione premi:', rewardsError);
+                                }
+
+                                console.log('✅ Database resettato');
+                                alert('🔄 Tutti i dati sono stati cancellati dal database!');
+                                 
+                                // Reset locale
+                                localStorage.removeItem('eroi-di-casa-state');
+                                window.location.reload();
+                                 
+                              } catch (err) {
+                                console.error('❌ Errore reset database:', err);
+                                alert('❌ Errore durante il reset. Riprova.');
+                              }
                             }
                           }}
-                          className="w-full text-left px-4 py-3 rounded-xl hover:bg-red-50 transition-colors flex items-center gap-3"
+                          className="w-full bg-red-500 text-white p-4 rounded-2xl flex items-center gap-4 hover:bg-red-600 transition-colors"
                         >
                           <span className="text-xl">🔄</span>
                           <div>
-                            <p className="font-semibold text-red-600">Reset Completo</p>
-                            <p className="text-xs text-red-500">Cancella tutti i dati e ricomincia</p>
+                            <p className="font-semibold text-white">Reset Completo</p>
+                            <p className="text-xs text-white">Cancella tutti i dati e ricomincia</p>
                           </div>
                         </motion.button>
                       </div>

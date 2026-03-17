@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { supabase } from '../lib/supabase';
 import { 
-  Plus, 
   Edit, 
   Trash2, 
   ChevronDown,
@@ -98,15 +97,40 @@ export function ManageChores({ appState, onUpdateState, onBack }: ManageChoresPr
     }
   };
 
-  const deleteTask = (taskId: string) => {
+  const deleteTask = async (taskId: string) => {
     if (window.confirm('Sei sicuro di voler eliminare questa missione?')) {
-      const newState = {
-        ...appState,
-        tasks: appState.tasks.filter((task: any) => task.id !== taskId)
-      };
-      onUpdateState(newState);
-      setSelectedTask(null);
-      setShowEditModal(false);
+      try {
+        console.log('🗑️ Cancellazione missione da Supabase...', taskId);
+        
+        // Prima cancella da Supabase
+        const { error } = await supabase
+          .from('tasks')
+          .delete()
+          .eq('id', taskId);
+
+        if (error) {
+          console.error('❌ Errore cancellazione missione:', error);
+          alert(`❌ Errore database: ${error.message}`);
+          return;
+        }
+
+        console.log('✅ Missione cancellata da Supabase');
+        
+        // Poi aggiorna lo stato locale
+        const newState = {
+          ...appState,
+          tasks: appState.tasks.filter((task: any) => task.id !== taskId)
+        };
+        onUpdateState(newState);
+        setSelectedTask(null);
+        setShowEditModal(false);
+        
+        alert('🗑️ Missione cancellata con successo!');
+        
+      } catch (err) {
+        console.error('❌ Errore cancellazione missione:', err);
+        alert('❌ Errore di connessione. Riprova.');
+      }
     }
   };
 
@@ -386,9 +410,8 @@ export function ManageChores({ appState, onUpdateState, onBack }: ManageChoresPr
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={addTask}
-            className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-3 rounded-2xl shadow-lg hover:from-blue-600 hover:to-purple-600 transition-all"
+            className="w-full mt-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-3 rounded-2xl shadow-lg hover:from-blue-600 hover:to-purple-600 transition-all"
           >
-            <Plus className="w-5 h-5 mr-2" />
             Aggiungi Missione
           </motion.button>
         </motion.div>
