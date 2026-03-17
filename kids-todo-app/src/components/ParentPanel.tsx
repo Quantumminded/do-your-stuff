@@ -55,6 +55,7 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
   const [recurrence, setRecurrence] = useState<'daily' | 'weekly' | 'monthly' | 'once'>('daily');
   const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
   const [showPinPad, setShowPinPad] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showManageChores, setShowManageChores] = useState(false);
 
   const pendingTasks = getTasksNeedingApproval(appState);
@@ -197,117 +198,155 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
               >
                 <Users className="w-5 h-5" />
               </motion.button>
+
+              {/* Pulsante Settings con menu dropdown */}
+              <div className="relative">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                  className="bg-white/20 text-white p-2 rounded-xl"
+                  title="Impostazioni"
+                >
+                  <Settings className="w-5 h-5" />
+                </motion.button>
+
+                {/* Menu Settings Dropdown */}
+                <AnimatePresence>
+                  {showSettingsMenu && (
+                    <>
+                      {/* Backdrop per chiudere il menu */}
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[9998]"
+                        onClick={() => setShowSettingsMenu(false)}
+                      />
+                      
+                      {/* Menu Dropdown */}
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                        className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border-2 border-gray-200 z-[9999]"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                      <div className="p-2 space-y-1">
+                        {/* Cambia PIN */}
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={handleChangePin}
+                          className="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-3"
+                        >
+                          <span className="text-xl">🔐</span>
+                          <div>
+                            <p className="font-semibold text-gray-800">Cambia PIN</p>
+                            <p className="text-xs text-gray-500">PIN attuale: {appState.parentPin}</p>
+                          </div>
+                        </motion.button>
+
+                        {/* Aggiungi Bambino */}
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={async () => {
+                            setShowSettingsMenu(false);
+                            const name = prompt('Nome del bambino:');
+                            const avatar = prompt('Avatar (emoji):', '👶');
+                            if (name && avatar) {
+                              try {
+                                console.log('🔧 Creazione bambino su Supabase...');
+                                
+                                const { data, error } = await supabase
+                                  .from('children')
+                                  .insert({
+                                    name: name.trim(),
+                                    avatar: avatar.trim(),
+                                    coins: 0,
+                                    total_xp: 0,
+                                    level: 1,
+                                    family_id: appState.family?.id || null
+                                  })
+                                  .select()
+                                  .single();
+
+                                if (error) {
+                                  console.error('❌ Errore creazione bambino:', error);
+                                  alert(`❌ Errore database: ${error.message}`);
+                                  return;
+                                }
+
+                                console.log('✅ Bambino creato su Supabase:', data);
+
+                                // Aggiungi allo stato locale con UUID da Supabase
+                                const newChild = {
+                                  id: data.id, // UUID da Supabase
+                                  name: data.name,
+                                  avatar: data.avatar,
+                                  coins: data.coins,
+                                  totalXp: data.total_xp,
+                                  level: data.level,
+                                  parentId: data.family_id
+                                };
+
+                                const newState = {
+                                  ...appState,
+                                  family: {
+                                    ...appState.family!,
+                                    children: [...appState.family!.children, newChild]
+                                  }
+                                };
+                                onUpdateState(newState);
+                                alert(`🎉 ${name} è stato aggiunto alla famiglia con UUID valido!`);
+                                
+                              } catch (err) {
+                                console.error('❌ Errore creazione bambino:', err);
+                                alert('❌ Errore di connessione. Riprova.');
+                              }
+                            }
+                          }}
+                          className="w-full text-left px-4 py-3 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-3"
+                        >
+                          <span className="text-xl">👶</span>
+                          <div>
+                            <p className="font-semibold text-gray-800">Aggiungi Bambino</p>
+                            <p className="text-xs text-gray-500">Crea un nuovo profilo bambino</p>
+                          </div>
+                        </motion.button>
+
+                        
+                        {/* Reset Completo */}
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => {
+                            setShowSettingsMenu(false);
+                            if (window.confirm('⚠️ Sei sicuro di voler resettare TUTTO?\n\nTutti i dati verranno cancellati:\n• Famiglia\n• Bambini\n• Missioni\n• Premi\n• Monete e XP\n\nQuesta azione non è reversibile!')) {
+                              localStorage.removeItem('eroi-di-casa-state');
+                              window.location.reload();
+                            }
+                          }}
+                          className="w-full text-left px-4 py-3 rounded-xl hover:bg-red-50 transition-colors flex items-center gap-3"
+                        >
+                          <span className="text-xl">🔄</span>
+                          <div>
+                            <p className="font-semibold text-red-600">Reset Completo</p>
+                            <p className="text-xs text-red-500">Cancella tutti i dati e ricomincia</p>
+                          </div>
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Reset Button */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-3xl p-6 shadow-xl mb-4"
-        >
-          <div className="space-y-3">
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleChangePin}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-3 rounded-2xl shadow-lg flex items-center justify-center gap-3"
-            >
-              <span className="text-xl">🔐</span>
-              <div className="text-left">
-                <p className="text-base">Cambia PIN</p>
-                <p className="text-xs opacity-80">PIN attuale: {appState.parentPin}</p>
-              </div>
-            </motion.button>
-            
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={async () => {
-                const name = prompt('Nome del bambino:');
-                const avatar = prompt('Avatar (emoji):', '👶');
-                if (name && avatar) {
-                  try {
-                    console.log('🔧 Creazione bambino su Supabase...');
-                    
-                    const { data, error } = await supabase
-                      .from('children')
-                      .insert({
-                        name: name.trim(),
-                        avatar: avatar.trim(),
-                        coins: 0,
-                        total_xp: 0,
-                        level: 1,
-                        family_id: appState.family?.id || null
-                      })
-                      .select()
-                      .single();
-
-                    if (error) {
-                      console.error('❌ Errore creazione bambino:', error);
-                      alert(`❌ Errore database: ${error.message}`);
-                      return;
-                    }
-
-                    console.log('✅ Bambino creato su Supabase:', data);
-
-                    // Aggiungi allo stato locale con UUID da Supabase
-                    const newChild = {
-                      id: data.id, // UUID da Supabase
-                      name: data.name,
-                      avatar: data.avatar,
-                      coins: data.coins,
-                      totalXp: data.total_xp,
-                      level: data.level,
-                      parentId: data.family_id
-                    };
-
-                    const newState = {
-                      ...appState,
-                      family: {
-                        ...appState.family!,
-                        children: [...appState.family!.children, newChild]
-                      }
-                    };
-                    onUpdateState(newState);
-                    alert(`🎉 ${name} è stato aggiunto alla famiglia con UUID valido!`);
-                    
-                  } catch (err) {
-                    console.error('❌ Errore creazione bambino:', err);
-                    alert('❌ Errore di connessione. Riprova.');
-                  }
-                }
-              }}
-              className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white font-bold py-3 rounded-2xl shadow-lg flex items-center justify-center gap-3"
-            >
-              <span className="text-xl">👶</span>
-              <div className="text-left">
-                <p className="text-base">Aggiungi Bambino</p>
-                <p className="text-xs opacity-80">Crea un nuovo profilo bambino</p>
-              </div>
-            </motion.button>
-            
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => {
-                if (window.confirm('⚠️ Sei sicuro di voler resettare TUTTO?\n\nTutti i dati verranno cancellati:\n• Famiglia\n• Bambini\n• Missioni\n• Premi\n• Monete e XP\n\nQuesta azione non è reversibile!')) {
-                  localStorage.removeItem('eroi-di-casa-state');
-                  window.location.reload();
-                }
-              }}
-              className="w-full bg-gradient-to-r from-red-500 to-orange-500 text-white font-bold py-3 rounded-2xl shadow-lg flex items-center justify-center gap-3"
-            >
-              <span className="text-xl">🔄</span>
-              <div className="text-left">
-                <p className="text-base">Reset Completo</p>
-                <p className="text-xs opacity-80">Cancella tutti i dati e ricomincia</p>
-              </div>
-            </motion.button>
-          </div>
-        </motion.div>
-
+        
         {/* Approval Queue */}
         {pendingTasks.length > 0 && (
           <motion.div
