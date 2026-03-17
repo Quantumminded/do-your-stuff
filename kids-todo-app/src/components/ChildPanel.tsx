@@ -14,6 +14,7 @@ import {
 import { AppState, Child, Task, Reward } from '../types';
 import { updateTaskStatus, getTasksForChild, redeemReward } from '../utils/familyLogic';
 import { triggerConfetti } from '../utils/confetti';
+import MissionCard from './MissionCard';
 
 interface ChildPanelProps {
   appState: AppState;
@@ -26,6 +27,40 @@ export function ChildPanel({ appState, child, onUpdateState, onModeToggle }: Chi
   const [activeTab, setActiveTab] = useState<'missions' | 'rewards'>('missions');
   const todayTasks = getTasksForChild(appState, child.id);
   const availableRewards = appState.rewards.filter(r => !r.redeemedBy && r.cost <= child.coins);
+
+  // Controlla se ci sono missioni appena approvate e mostra notifica
+  React.useEffect(() => {
+    const approvedTasks = todayTasks.filter(task => task.status === 'approved');
+    if (approvedTasks.length > 0) {
+      // Controlla se le notifiche sono già state mostrate in questa sessione
+      const notificationKey = `approved-${approvedTasks.map(t => t.id).join('-')}`;
+      const alreadyNotified = sessionStorage.getItem(notificationKey);
+      
+      if (!alreadyNotified) {
+        // Mostra notifica per le missioni approvate
+        const notification = document.createElement('div');
+        notification.className = 'fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 animate-bounce';
+        notification.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="text-2xl">🎉</span>
+            <div>
+              <div class="font-bold">Missioni Approvate!</div>
+              <div class="text-sm">Hai ${approvedTasks.length} missioni approvate!</div>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(notification);
+        
+        // Salva che la notifica è stata mostrata
+        sessionStorage.setItem(notificationKey, 'true');
+        
+        // Rimuovi notifica dopo 5 secondi
+        setTimeout(() => {
+          notification.remove();
+        }, 5000);
+      }
+    }
+  }, [todayTasks]); // Si attiva quando le missioni cambiano
 
   
   const handleTaskComplete = (taskId: string) => {
@@ -188,108 +223,16 @@ export function ChildPanel({ appState, child, onUpdateState, onModeToggle }: Chi
                 ) : (
                   <div className="space-y-3">
                     {todayTasks.map(task => (
-                      <motion.div
+                      <MissionCard
                         key={task.id}
-                        whileHover={{ scale: !task.isCompleted ? 1.02 : 1 }}
-                        whileTap={{ scale: !task.isCompleted ? 0.98 : 1 }}
-                        onClick={() => !task.isCompleted && handleTaskComplete(task.id)}
-                        className={`bg-gradient-to-r rounded-2xl p-4 transition-all ${
-                          !task.isCompleted
-                            ? 'from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 cursor-pointer'
-                            : task.isCompleted && task.status === 'completed'
-                            ? 'from-yellow-50 to-orange-50 cursor-not-allowed opacity-75'
-                            : task.isCompleted && task.status === 'approved'
-                            ? 'from-green-50 to-emerald-50'
-                            : 'from-blue-50 to-purple-50'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <motion.div
-                              animate={task.status === 'approved' ? { rotate: 360 } : {}}
-                              transition={{ duration: 0.5 }}
-                              className={`text-3xl ${
-                                task.status === 'approved' ? 'grayscale' : ''
-                              }`}
-                            >
-                              {task.icon}
-                            </motion.div>
-                            <div className="flex-1">
-                              <h3 className={`font-bold text-lg ${
-                                task.isCompleted && task.status === 'approved' 
-                                  ? 'text-gray-500 line-through' 
-                                  : task.isCompleted && task.status === 'completed'
-                                  ? 'text-gray-600'
-                                  : 'text-gray-800'
-                              }`}>
-                                {task.title}
-                              </h3>
-                              <p className={`text-sm ${
-                                task.isCompleted && task.status === 'approved' 
-                                  ? 'text-gray-400 line-through' 
-                                  : task.isCompleted && task.status === 'completed'
-                                  ? 'text-gray-500'
-                                  : 'text-gray-600'
-                              }`}>
-                                {task.description}
-                              </p>
-                            </div>
-                          </div>
-                          
-                          <motion.div
-                            animate={task.status === 'completed' ? { scale: [1, 1.2, 1] } : {}}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                              task.status === 'approved'
-                                ? 'bg-green-500'
-                                : task.status === 'completed'
-                                ? 'bg-yellow-500'
-                                : 'bg-gray-200'
-                            }`}
-                          >
-                            {task.status === 'approved' && <CheckCircle2 className="w-5 h-5 text-white" />}
-                            {task.status === 'completed' && <Clock className="w-5 h-5 text-white" />}
-                          </motion.div>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="flex items-center gap-1 bg-yellow-100 px-2 py-1 rounded-full">
-                              <Trophy className="w-4 h-4 text-yellow-600" />
-                              <span className="text-sm font-semibold text-yellow-600">{task.coins}</span>
-                            </div>
-                            <div className="flex items-center gap-1 bg-purple-100 px-2 py-1 rounded-full">
-                              <Zap className="w-4 h-4 text-purple-600" />
-                              <span className="text-sm font-semibold text-purple-600">{task.xp} XP</span>
-                            </div>
-                          </div>
-                          
-                          <div className="text-right">
-                            {!task.isCompleted && (
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={() => handleTaskComplete(task.id)}
-                                className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold py-2 px-4 rounded-xl text-sm shadow-lg"
-                              >
-                                <CheckCircle2 className="w-4 h-4 mr-1" />
-                                Fatto!
-                              </motion.button>
-                            )}
-                            {task.isCompleted && task.status === 'completed' && (
-                              <div className="bg-yellow-100 text-yellow-700 font-semibold py-2 px-4 rounded-xl text-sm border-2 border-yellow-300">
-                                <Clock className="w-4 h-4 mr-1 inline" />
-                                In attesa di verifica
-                              </div>
-                            )}
-                            {task.isCompleted && task.status === 'approved' && (
-                              <div className="bg-green-100 text-green-700 font-semibold py-2 px-4 rounded-xl text-sm border-2 border-green-300">
-                                <CheckCircle2 className="w-4 h-4 mr-1 inline" />
-                                Approvata!
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </motion.div>
+                        mission={task}
+                        child={child}
+                        onComplete={handleTaskComplete}
+                        isChildView={true}
+                        xp={child.totalXp}
+                        level={child.level}
+                        coins={child.coins}
+                      />
                     ))}
                   </div>
                 )}
