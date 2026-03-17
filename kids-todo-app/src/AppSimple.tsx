@@ -5,18 +5,13 @@ import { ParentPanel } from './components/ParentPanel';
 import { ChildPanel } from './components/ChildPanel';
 import { RewardManagement } from './components/RewardManagement';
 import { ManageChores } from './components/ManageChores';
+import { registerParent } from './lib/auth';
 import { supabase } from './lib/supabase';
 import { ViewMode, Family, Child, Parent, Task, Reward, AppState } from './types';
 
 function App() {
-  // PULIZIA LOCALSTORAGE ALL'AVVIO
-  React.useEffect(() => {
-    console.log('🧹 Pulizia localStorage all\'avvio...');
-    localStorage.clear();
-  }, []);
-
   const [appState, setAppState] = useState<AppState | null>(null);
-  const [loading, setLoading] = useState(false); // Non caricare all'avvio
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentView, setCurrentView] = useState<ViewMode>('parent-dashboard');
 
@@ -39,7 +34,7 @@ function App() {
         return;
       }
 
-      // 2. Verifica password
+      // 2. Verifica password (semplice per ora)
       if (parent.password_hash !== password) {
         setError('Password errata');
         setLoading(false);

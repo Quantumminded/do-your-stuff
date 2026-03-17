@@ -15,6 +15,7 @@ import { AppState, Child, ViewMode } from '../types';
 import { addTask, updateTaskStatus, getTasksNeedingApproval } from '../utils/familyLogic';
 import { PinPad } from './PinPad';
 import { ManageChores } from './ManageChores';
+import { supabase } from '../lib/supabase';
 
 interface ParentPanelProps {
   appState: AppState;
@@ -204,7 +205,7 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-3xl p-6 shadow-xl"
+          className="bg-white rounded-3xl p-6 shadow-xl mb-4"
         >
           <div className="space-y-3">
             <motion.button
@@ -217,6 +218,73 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
               <div className="text-left">
                 <p className="text-base">Cambia PIN</p>
                 <p className="text-xs opacity-80">PIN attuale: {appState.parentPin}</p>
+              </div>
+            </motion.button>
+            
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={async () => {
+                const name = prompt('Nome del bambino:');
+                const avatar = prompt('Avatar (emoji):', '👶');
+                if (name && avatar) {
+                  try {
+                    console.log('🔧 Creazione bambino su Supabase...');
+                    
+                    const { data, error } = await supabase
+                      .from('children')
+                      .insert({
+                        name: name.trim(),
+                        avatar: avatar.trim(),
+                        coins: 0,
+                        total_xp: 0,
+                        level: 1,
+                        family_id: appState.family?.id || null
+                      })
+                      .select()
+                      .single();
+
+                    if (error) {
+                      console.error('❌ Errore creazione bambino:', error);
+                      alert(`❌ Errore database: ${error.message}`);
+                      return;
+                    }
+
+                    console.log('✅ Bambino creato su Supabase:', data);
+
+                    // Aggiungi allo stato locale con UUID da Supabase
+                    const newChild = {
+                      id: data.id, // UUID da Supabase
+                      name: data.name,
+                      avatar: data.avatar,
+                      coins: data.coins,
+                      totalXp: data.total_xp,
+                      level: data.level,
+                      parentId: data.family_id
+                    };
+
+                    const newState = {
+                      ...appState,
+                      family: {
+                        ...appState.family!,
+                        children: [...appState.family!.children, newChild]
+                      }
+                    };
+                    onUpdateState(newState);
+                    alert(`🎉 ${name} è stato aggiunto alla famiglia con UUID valido!`);
+                    
+                  } catch (err) {
+                    console.error('❌ Errore creazione bambino:', err);
+                    alert('❌ Errore di connessione. Riprova.');
+                  }
+                }
+              }}
+              className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white font-bold py-3 rounded-2xl shadow-lg flex items-center justify-center gap-3"
+            >
+              <span className="text-xl">👶</span>
+              <div className="text-left">
+                <p className="text-base">Aggiungi Bambino</p>
+                <p className="text-xs opacity-80">Crea un nuovo profilo bambino</p>
               </div>
             </motion.button>
             
@@ -352,7 +420,7 @@ export function ParentPanel({ appState, onUpdateState, onViewChange, onModeToggl
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-3xl p-6 shadow-xl"
+          className="bg-white rounded-3xl p-6 shadow-xl mb-4"
         >
           <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Users className="w-6 h-6 text-blue-600" />
