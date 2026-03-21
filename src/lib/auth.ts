@@ -109,7 +109,7 @@ export async function getFamilyData(familyId: string) {
     const { data: tasks, error: tasksError } = await supabase
       .from('tasks')
       .select('*')
-      .in('assigned_to', children.map(c => c.id));
+      .in('assigned_to', children.map((c: any) => c.id));
 
     if (tasksError) throw tasksError;
 

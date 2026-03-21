@@ -56,7 +56,7 @@ function App() {
       const { data: tasks } = await supabase
         .from('tasks')
         .select('*')
-        .in('assigned_to', children?.map(c => c.id) || []);
+        .in('assigned_to', children?.map((c: any) => c.id) || []);
 
       const { data: rewards } = await supabase
         .from('rewards')
