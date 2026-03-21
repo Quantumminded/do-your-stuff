@@ -8,7 +8,11 @@ import { ManageChores } from './components/ManageChores';
 import { supabase } from './lib/supabase';
 import { ViewMode, Family, Child, Parent, Task, Reward, AppState } from './types';
 
+console.log('🚀 App.tsx - File caricato, supabase:', supabase ? 'presente' : 'null');
+
 function App() {
+  console.log('🚀 App component rendering');
+  
   // PULIZIA LOCALSTORAGE ALL'AVVIO
   React.useEffect(() => {
     console.log('🧹 Pulizia localStorage all\'avvio...');
@@ -22,20 +26,26 @@ function App() {
 
   // Login
   const handleLogin = async (email: string, password: string) => {
+    console.log('🔑 handleLogin chiamato per:', email);
     setLoading(true);
     setError(null);
     
     try {
       // Inizializza Supabase se è null
+      console.log('🔍 supabase state:', supabase ? 'presente' : 'null');
       if (!supabase) {
+        console.log('⚠️ Supabase è null, inizializzazione...');
         const { initSupabaseFromConfig } = await import('./lib/supabase');
         const initialized = await initSupabaseFromConfig();
+        console.log('🔍 initSupabaseFromConfig result:', initialized);
         if (!initialized) {
           setError('Errore di configurazione. Contatta il supporto.');
           setLoading(false);
           return;
         }
       }
+      
+      console.log('✅ Supabase pronto, procedo con login');
       
       // 1. Trova genitore
       const { data: parent, error: parentError } = await supabase
