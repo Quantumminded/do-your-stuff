@@ -3,10 +3,10 @@
   "buildCommand": "cd kids-todo-app && npm run build",
   "outputDirectory": "kids-todo-app/build",
   "installCommand": "cd kids-todo-app && npm install",
-  "routes": [
+  "rewrites": [
     {
-      "src": "/(.*)",
-      "dest": "/kids-todo-app/index.html"
+      "source": "/(.*)",
+      "destination": "/kids-todo-app/index.html"
     }
   ]
 }
