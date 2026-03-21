@@ -1,12 +1,18 @@
 {
   "version": 2,
-  "buildCommand": "cd kids-todo-app && npm run build",
-  "outputDirectory": "kids-todo-app/build",
-  "installCommand": "cd kids-todo-app && npm install",
-  "rewrites": [
+  "builds": [
     {
-      "source": "/(.*)",
-      "destination": "/kids-todo-app/index.html"
+      "src": "kids-todo-app/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "build"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ]
 }
