@@ -1,12 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Debug completo delle variabili d'ambiente
+console.log('🔍 TUTTE LE VARIABILI ENV:');
+console.log('REACT_APP_SUPABASE_URL:', process.env.REACT_APP_SUPABASE_URL);
+console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
+console.log('REACT_APP_SUPABASE_ANON_KEY:', process.env.REACT_APP_SUPABASE_ANON_KEY);
+console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
+
 // Configurazione Supabase da variabili d'ambiente
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Debug per verificare le variabili
-console.log('🔍 Supabase URL:', supabaseUrl);
-console.log('🔍 Supabase Key:', supabaseAnonKey ? 'Presente' : 'Mancante');
+// Debug per verificare le variabili finali
+console.log('🔍 Supabase URL finale:', supabaseUrl);
+console.log('🔍 Supabase Key finale:', supabaseAnonKey ? 'Presente' : 'Mancante');
+console.log('🔍 Ambiente:', process.env.NODE_ENV);
 
 // Fallback per sviluppo
 if (!supabaseUrl || !supabaseAnonKey) {
