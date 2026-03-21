@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Configurazione Supabase da variabili d'ambiente
-const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
-const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // Debug per verificare le variabili
 console.log('🔍 Supabase URL:', supabaseUrl);
