@@ -26,6 +26,17 @@ function App() {
     setError(null);
     
     try {
+      // Inizializza Supabase se è null
+      if (!supabase) {
+        const { initSupabaseFromConfig } = await import('./lib/supabase');
+        const initialized = await initSupabaseFromConfig();
+        if (!initialized) {
+          setError('Errore di configurazione. Contatta il supporto.');
+          setLoading(false);
+          return;
+        }
+      }
+      
       // 1. Trova genitore
       const { data: parent, error: parentError } = await supabase
         .from('parents')
@@ -134,6 +145,17 @@ function App() {
     setError(null);
     
     try {
+      // Inizializza Supabase se è null
+      if (!supabase) {
+        const { initSupabaseFromConfig } = await import('./lib/supabase');
+        const initialized = await initSupabaseFromConfig();
+        if (!initialized) {
+          setError('Errore di configurazione. Contatta il supporto.');
+          setLoading(false);
+          return;
+        }
+      }
+      
       // 1. Crea famiglia
       const { data: family, error: familyError } = await supabase
         .from('families')
