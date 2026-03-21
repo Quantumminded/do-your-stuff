@@ -4,23 +4,35 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Debug dettagliato
-console.log('🔍 DEBUG VARIABILI:');
-console.log('NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '***' : 'undefined');
-console.log('NODE_ENV:', process.env.NODE_ENV);
+// Se le variabili non sono disponibili, l'app caricherà da config.json
+export let supabase: any;
 
-// Fallback per sviluppo
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('❌ Variabili Supabase mancanti! Controlla Vercel Environment Variables');
-  console.error('❌ URL:', supabaseUrl);
-  console.error('❌ Key:', supabaseAnonKey ? '***' : 'undefined');
-  throw new Error('Supabase configuration missing');
+// Inizializzazione con fallback
+if (supabaseUrl && supabaseAnonKey) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey);
+} else {
+  console.log('⚠️ Environment variables non disponibili, caricamento da config.json...');
+  // Il client verrà inizializzato dopo il caricamento del config
+  supabase = null;
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-// Tipi per il database
+// Funzione per inizializzare Supabase da config.json
+export async function initSupabaseFromConfig(): Promise<boolean> {
+  try {
+    const response = await fetch('/config.json');
+    const config = await response.json();
+    
+    if (config.supabaseUrl && config.supabaseAnonKey) {
+      supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+      console.log('✅ Supabase inizializzato da config.json');
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('❌ Errore caricamento config.json:', error);
+    return false;
+  }
+}
 export interface Database {
   public: {
     Tables: {
