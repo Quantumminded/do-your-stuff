@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "buildCommand": "cd kids-todo-app && npm run build",
+  "outputDirectory": "kids-todo-app/build",
+  "installCommand": "cd kids-todo-app && npm install",
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/kids-todo-app/index.html"
+    }
+  ]
+}
