@@ -17,20 +17,34 @@ if (supabaseUrl && supabaseAnonKey) {
   supabase = null;
 }
 
-// Funzione per inizializzare Supabase da config.json
+// Funzione per inizializzare Supabase da API route sicura
 export async function initSupabaseFromConfig(): Promise<boolean> {
   try {
-    const response = await fetch('/config.json');
-    const config = await response.json();
+    // Prima prova con API route (per Vercel)
+    const response = await fetch('/api/config');
+    if (response.ok) {
+      const config = await response.json();
+      
+      if (config.supabaseUrl && config.supabaseAnonKey) {
+        supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+        console.log('✅ Supabase inizializzato da API route');
+        return true;
+      }
+    }
     
-    if (config.supabaseUrl && config.supabaseAnonKey) {
-      supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+    // Fallback a config.json (per locale)
+    const fallbackResponse = await fetch('/config.json');
+    const fallbackConfig = await fallbackResponse.json();
+    
+    if (fallbackConfig.supabaseUrl && fallbackConfig.supabaseAnonKey) {
+      supabase = createClient(fallbackConfig.supabaseUrl, fallbackConfig.supabaseAnonKey);
       console.log('✅ Supabase inizializzato da config.json');
       return true;
     }
+    
     return false;
   } catch (error) {
-    console.error('❌ Errore caricamento config.json:', error);
+    console.error('❌ Errore caricamento configurazione:', error);
     return false;
   }
 }
